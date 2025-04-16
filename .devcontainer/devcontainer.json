@@ -1,0 +1,4 @@
+{
+  "name": "RockyLinux 8 Dev Container",
+  "image": "rockylinux:8"
+}
