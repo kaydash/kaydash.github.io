@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리스트 예제</title>
+    <!-- Bootstrap CSS 추가 -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .bg-image {
+            /* 배경 이미지 추가 */
+            background-image: url('resourcesHTML/getImgs/bg.jpg');
+            /* 배경 이미지 커버 설정 */
+            background-size: cover;
+            /* 높이 설정 */
+            height: 100%;
+            /* 투명도를 위한 배경 오버레이 */
+            background-color: rgba(0, 0, 0, 0.5); /* 검은색 배경에 50% 투명도 */
+            /* 이미지와 투명도 색상 결합 */
+            background-blend-mode: overlay;
+        }
+        /* 또는 투명도가 있는 선형 그라데이션 사용 */
+        .bg-gradient {
+            background: linear-gradient(
+                rgba(0, 0, 0, 0.5), /* 시작 색상: 검은색, 50% 투명도 */
+                rgba(0, 0, 0, 0.5)  /* 끝 색상: 같은 색상, 같은 투명도 */
+            ), url('resourcesHTML/getImgs/bg.jpg');
+            background-size: cover;
+            height: 100%;
+        }
+        /* 사용자 지정 스타일 */
+        .list-item {
+            display: flex;
+            align-items: center;
+            background-color: #f8f9fa; /* 밝은 회색 배경 */
+            border-radius: 25px; /* 둥근 모서리 */
+            padding: 10px;
+            margin: 10px 0; /* 항목 사이의 간격 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 그림자 효과 */
+        }
+        .list-item img {
+            margin-right: 15px;
+            border-radius: 15px; /* 이미지의 둥근 모서리 */
+            width: 80px; /* 이미지 크기 조정 */
+            height: auto;
+        }
+        .list-item a {
+            color: #007bff; /* 링크 색상 */
+            text-decoration: none; /* 밑줄 제거 */
+            font-weight: bold; /* 글씨 굵기 */
+        }
+        /* 반응형 디자인을 위한 미디어 쿼리 */
+        @media (min-width: 768px) {
+            .col-md {
+                flex: 0 0 50%;
+                max-width: 50%;
+            }
+        }
+        @media (min-width: 992px) {
+            .col-lg {
+                flex: 0 0 33.333333%;
+                max-width: 33.333333%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-image">
+
+<div class="container my-4">
+    <div id="listContainer" class="row"></div>
+</div>
+
+<!-- Bootstrap JS 추가 -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    const imageList = ['cloudeaver.png','cockpit-1.png','cockpit-2.png','cockpit-3.png','code-server-1.png','code-server-2.png','code-server-3.png','code-server-L4.png','filebrowser.png','gitlab.png','grafana.png','jeus-1.png','jeus-2.png','jeus-HA.png','PMM.png','pve-web.png']
+    const titleList = ['cloudeaver','cockpit-1','cockpit-2','cockpit-3','code-server-1','code-server-2','code-server-3','code-server-L4','filebrowser','gitlab','grafana','jeus-1','jeus-2','jeus-HA','PMM','pve-web']
+    const urlList = ['http://shinhandata.kro.kr:8400','http://shinhandata.kro.kr:9091','http://shinhandata.kro.kr:9092','http://shinhandata.kro.kr:9093','https://shinhandata.kro.kr:31','https://shinhandata.kro.kr:32','https://shinhandata.kro.kr:33','https://shinhandata.kro.kr:30','http://shinhandata.kro.kr:8100','http://shinhandata.kro.kr:8300','http://shinhandata.kro.kr:3000','http://shinhandata.kro.kr:81','http://shinhandata.kro.kr:82','http://shinhandata.kro.kr:80','http://shinhandata.kro.kr:8200','https://shinhandata.kro.kr:8006']
+
+
+    const listContainer = document.getElementById('listContainer');
+
+    for (let i = 0; i < imageList.length; i++) {
+        // col 클래스를 가진 div 요소 생성
+        const col = document.createElement('div');
+        col.className = 'col-12 col-md-6 col-lg-4 mb-4';
+        // list-item 클래스를 가진 div 요소에 이미지와 링크 추가
+        col.innerHTML = `
+            <div class="list-item">
+                <img src="resourcesHTML/getImgs/${imageList[i]}" alt="Image ${i + 1}">
+                <a href="${urlList[i]}" target="_blank">${titleList[i]}</a>
+            </div>
+        `;
+        // 생성된 col 요소를 listContainer에 추가
+        listContainer.appendChild(col);
+    }
+</script>
+</body>
+</html>

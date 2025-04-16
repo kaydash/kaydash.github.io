@@ -1,0 +1,17 @@
+node,component
+Node1,Patroni
+Node1,OpenSearch
+Node1,PostgreSQL
+Node1,Kafka
+Node1,Redis
+Node2,Patroni
+Node2,OpenSearch
+Node2,PostgreSQL
+Node2,Kafka
+Node2,Redis
+Node3,Portainer
+Node3,PMM
+Node3,Kafka-UI
+Node3,Gogs
+Node3,WebFS
+Ubuntu,GPU PassThrough 

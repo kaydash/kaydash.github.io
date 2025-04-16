@@ -1,0 +1,355 @@
+<!--
+
+    네트워크를 표현하는 코드를 작성하고 있어.
+    다음 사항을 수정해줘.
+    
+    선분이 항상 직교하도록 작성해.
+    각 직교 지점이나 한 선분의 끝에 각 노드들이 위치하도록 해.
+    각 노선은 겹치지 않도록 노드들을 잘 분산해서 배치해.
+    zeroSSL과 Domain사이에 있는 ProvideSSL은 zeroSSL의 아래아면서 portal의 왼쪽에 위치하도록 해서 다시 노선을 그려줘.
+    portal은 deploySSL을 지난 후에 OCI로 연결되어야해. 그 후에 OCI가 ssh tunneling을 지나서 PVE로 연결되어야해.
+    NLP#1은 passThrough와 수평으로 연결되도록 위치를 변경해.
+    NAT 주변으로 node1,2,3,nlp,HA Proxy가 둘러 싸듯이 모두 NAT와 연결되어야해
+    수직선과 수평선, 그리고 45도 변경된 사선만을 사용해서 그려줘.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        .map_body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        .container_map_box {
+            width: 1500px;
+            height: 800px;
+            position: relative;
+            display: flex;
+            border: 1px solid #ccc;
+        }
+
+        .section {
+            height: 100%;
+            position: relative;
+        }
+
+        .internet {
+            width: 25%;
+            background: #BDE3FF;
+        }
+
+        .dmz {
+            width: 25%;
+            background: #FFFFF0;
+        }
+
+        .private {
+            width: 50%;
+            background: #95A5A6;
+        }
+
+        .section-title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;            
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .station {
+            position: absolute;
+            width: 80px;
+            height: 70px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+            gap: 5px;
+            z-index: 2;
+        }
+
+        .station:hover {
+            transform: scale(1.1);
+        }
+
+        .station-icon {
+            font-size: 1.5em;
+        }
+
+        .station-label {
+            font-size: 0.8em;
+            color: #333;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .station-ip {
+            font-size: 0.7em;
+            color: #666;
+        }
+
+        .line {
+            position: absolute;
+            background: transparent;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.3;
+        }
+
+        .moving-dot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body class="map_body">
+    <div class="container_map_box" id="map">
+        <div class="section internet">
+            <div class="section-title">인터넷망 (Internet)</div>
+        </div>
+        <div class="section dmz">
+            <div class="section-title">DMZ (192.168.11.x/24)</div>
+        </div>
+        <div class="section private">
+            <div class="section-title">사설망 (30.0.0.x/24)</div>
+        </div>
+    </div>
+
+    <script>
+        const stations = [
+            { x: 450, y: 380, icon: '🖥️', label: 'PVE', ip: '', section: 'dmz' },
+            { x: 450, y: 750, icon: '💻', label: '연구소<br>외부망PC', ip: '', section: 'dmz' },
+            { x: 950, y: 250, icon: '🔍', label: 'ubuntu(GPU)', ip: '30.0.0.20', section: 'private' },
+            { x: 1300, y: 250, icon: '💻', label: 'node#1', ip: '30.0.0.31', section: 'private' },
+            { x: 1300, y: 600, icon: '💻', label: 'node#2', ip: '30.0.0.32', section: 'private' },
+            { x: 950, y: 600, icon: '💻', label: 'node#3', ip: '30.0.0.33', section: 'private' },
+            { x: 1300, y: 380, icon: '⚖️', label: 'HA Proxy', ip: '30.0.0.30', section: 'private' },
+            { x: 950, y: 380, icon: '🔁', label: 'gate', ip: '30.0.0.10', section: 'private' },
+            { x: 800, y: 380, icon: '🔄', label: 'Port Forward', ip: '', section: 'private' },
+            { x: 150, y: 400, icon: '🔒', label: 'SSH Tunneling', ip: '', section: 'internet' },
+            { x: 300, y: 500, icon: '☁️',  label: 'OCI\n129.154.197.x/24', ip: '', section: 'internet' },
+            { x: 300, y: 600, icon: '📦', label: 'DeploySSL', ip: '', section: 'internet' },
+            { x: 150, y: 600, icon: '🔐', label: 'ZeroSSL', ip: '', section: 'internet' },
+            { x: 300, y: 750, icon: '🌐', label: 'Domain\n(shbank.kro.kr)', ip: '', section: 'internet' },
+            { x: 800, y: 250, icon: '🔀', label: 'passThrough\n(DMA)', ip: '', section: 'private' },            
+            { x: 150, y: 200, icon: '👥', label: 'ExternalUser', ip: '', section: 'internet' },
+            { x: 150, y: 750, icon: '🔐', label: 'Provide SSL', ip: '', section: 'internet' },
+        ];
+
+        const lines = [
+            { start: 'DeploySSL', end: 'OCI\n129.154.197.x/24', color: '#4285F4' },
+            { start: 'OCI\n129.154.197.x/24', end: 'SSHTunneling', color: '#4285F4', bent: true },            
+            { start: 'SSHTunneling', end: 'PVE', color: '#4285F4', bent: true },
+            { start: 'ZeroSSL', end: 'ProvideSSL', color: '#E01E5A' },
+            { start: 'ProvideSSL', end: 'Domain\n(shbank.kro.kr)', color: '#E01E5A' },
+            { start: 'Domain\n(shbank.kro.kr)', end: 'DeploySSL', color: '#E01E5A' },
+            { start: '연구소<br>외부망PC', end: 'Domain(shbank.kro.kr)', color: '#E01E5A', bent: true },
+            { start: 'PVE', end: 'passThrough(DMA)', color: '#2E8555', bent: true },
+            { start: 'passThrough(DMA)', end: 'ubuntu(GPU)', color: '#2E8555' },
+            { start: 'PVE', end: 'Port Forward', color: '#e8472b', bent: true },
+            { start: 'Port Forward', end: 'gate', color: '#e8472b' },
+            { start: 'gate', end: 'node#1', color: '#e8b62b' },
+            { start: 'gate', end: 'node#2', color: '#e8b62b' },
+            { start: 'gate', end: 'node#3', color: '#e8b62b' },
+            { start: 'gate', end: 'HAProxy', color: '#e8472b' },
+            { start: 'gate', end: 'NLP#1', color: '#e8b62b' },
+            { start: 'HAProxy', end: 'node#1', color: '#e8472b' },
+            { start: 'HAProxy', end: 'node#2', color: '#e8472b' },
+            { start: 'node#3', end: 'node#1', color: '#4285F4' },
+            { start: 'node#3', end: 'node#2', color: '#4285F4' },
+            { start: 'ExternalUser', end: 'PVE', color: '#4285F4', bent: true },
+            { start: '연구소<br>외부망PC', end: 'PVE', color: '#4285F4'},
+            { start: 'gate', end: 'ubuntu(GPU)', color: '#4285F4', bent: true },
+        ];
+
+        function createStation(x, y, icon, label, ip) {
+            const station = document.createElement('div');
+            station.className = 'station';
+            station.style.left = (x - 40) + 'px';
+            station.style.top = (y - 35) + 'px';
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'station-icon';
+            iconDiv.innerHTML = icon;
+            
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'station-label';
+            labelDiv.innerHTML = label;
+            
+            station.appendChild(iconDiv);
+            station.appendChild(labelDiv);
+
+            if (ip) {
+                const ipDiv = document.createElement('div');
+                ipDiv.className = 'station-ip';
+                ipDiv.innerHTML = ip;
+                station.appendChild(ipDiv);
+            }
+            
+            return station;
+        }
+
+        function getStationCenter(station) {
+            const rect = station.getBoundingClientRect();
+            return {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+        }
+
+        function createLine(startStation, endStation, color, bent = false) {
+            const start = getStationCenter(startStation);
+            const end = getStationCenter(endStation);
+            
+            if (bent) {
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                
+                if (Math.abs(start.x - end.x) > Math.abs(start.y - end.y)) {
+                    createStraightLine(start, {x: start.x, y: midY}, color);
+                    createStraightLine({x: start.x, y: midY}, {x: end.x, y: midY}, color);
+                    createStraightLine({x: end.x, y: midY}, end, color);
+                } else {
+                    createStraightLine(start, {x: midX, y: start.y}, color);
+                    createStraightLine({x: midX, y: start.y}, {x: midX, y: end.y}, color);
+                    createStraightLine({x: midX, y: end.y}, end, color);
+                }
+            } else {
+                createStraightLine(start, end, color);
+            }
+        }
+
+        function createStraightLine(start, end, color) {
+            const line = document.createElement('div');
+            line.className = 'line';
+            
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            line.style.width = distance + 'px';
+            line.style.left = start.x + 'px';
+            line.style.top = start.y + 'px';
+            
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            line.style.transform = `rotate(${angle}deg)`;
+            line.style.transformOrigin = '0 0';
+            
+            const dotCount = Math.floor(distance / 15);
+            for (let i = 0; i <= dotCount; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dot.style.left = (i / dotCount * 100) + '%';
+                dot.style.background = color;
+                line.appendChild(dot);
+            }
+
+            map.appendChild(line);
+            return line;
+        }
+
+        function createMovingDot(line, color) {
+            const movingDot = document.createElement('div');
+            movingDot.className = 'moving-dot';
+            movingDot.style.background = color;
+
+            const start = getStationCenter(line.startElement);
+            const end = getStationCenter(line.endElement);
+            
+            let progress = 0;
+            setInterval(() => {
+                progress = (progress + 1) % 100;
+                let x, y;
+                if (line.bent) {
+                    const midX = (start.x + end.x) / 2;
+                    const midY = (start.y + end.y) / 2;
+                    if (Math.abs(start.x - end.x) > Math.abs(start.y - end.y)) {
+                        if (progress < 33) {
+                            x = start.x;
+                            y = start.y + (midY - start.y) * progress / 33;
+                        } else if (progress < 66) {
+                            x = start.x + (end.x - start.x) * (progress - 33) / 33;
+                            y = midY;
+                        } else {
+                            x = end.x;
+                            y = midY + (end.y - midY) * (progress - 66) / 34;
+                        }
+                    } else {
+                        if (progress < 33) {
+                            x = start.x + (midX - start.x) * progress / 33;
+                            y = start.y;
+                        } else if (progress < 66) {
+                            x = midX;
+                            y = start.y + (end.y - start.y) * (progress - 33) / 33;
+                        } else {
+                            x = midX + (end.x - midX) * (progress - 66) / 34;
+                            y = end.y;
+                        }
+                    }
+                } else {
+                    x = start.x + (end.x - start.x) * progress / 100;
+                    y = start.y + (end.y - start.y) * progress / 100;
+                }
+                movingDot.style.left = x + 'px';
+                movingDot.style.top = y + 'px';
+            }, 50);
+
+            return movingDot;
+        }
+
+        const map = document.getElementById('map');
+
+        stations.forEach(station => {
+            const stationElement = createStation(station.x, station.y, station.icon, station.label, station.ip);     
+            stationElement.id = station.label.replace(/\s+/g, '');
+            map.appendChild(stationElement);
+        });
+
+        setTimeout(() => {
+            lines.forEach(line => {
+                const startElement = document.getElementById(line.start.replace(/\s+/g, ''));
+                const endElement = document.getElementById(line.end.replace(/\s+/g, ''));
+                if (startElement && endElement) {
+                    createLine(startElement, endElement, line.color, line.bent);
+                    line.startElement = startElement;
+                    line.endElement = endElement;
+                    map.appendChild(createMovingDot(line, line.color));
+                }
+            });
+        }, 0);
+    </script>
+</body>
+</html>

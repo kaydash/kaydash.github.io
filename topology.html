@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Topology</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* 연결선 스타일 */
+    .connection-line {
+      width: 0.5px;
+      background-color: #6B7280;
+      margin: 0 auto;
+    }
+    
+    /* Server Farm에서 Gate으로의 연결선 */
+    .farm-to-gate-container {
+      position: relative;
+      height: 30px;
+      width: 100%;
+    }
+    .farm-to-gate-1 {
+      position: absolute;
+      border-left: 2px solid #6B7280;
+      height: 30px;
+      left: 10%;
+    }
+    .farm-to-gate-2 {
+      position: absolute;
+      border-left: 2px solid #6B7280;
+      height: 30px;
+      left: 50%;
+    }
+    .farm-to-gate-3 {
+      position: absolute;
+      border-left: 2px solid #6B7280;
+      height: 30px;
+      right: 10%;
+    }
+  </style>
+  <script>
+    // CSV 파일에서 컴포넌트 데이터를 가져오는 함수
+    async function loadComponents(pveId) {
+      try {
+        const response = await fetch(`pve${pveId}_components.csv`);
+        const csvText = await response.text();
+        const lines = csvText.split('\n');
+        
+        // 첫 줄은 헤더이므로 제외
+        const data = lines.slice(1).filter(line => line.trim() !== '');
+        
+        // 노드별로 컴포넌트 그룹화
+        const components = {};
+        
+        data.forEach(line => {
+          const [node, component] = line.split(',');
+          if (!components[node]) {
+            components[node] = [];
+          }
+          components[node].push(component);
+        });
+        
+        return components;
+      } catch (error) {
+        console.error(`Error loading components for PVE${pveId}:`, error);
+        return {};
+      }
+    }
+    
+    // 컴포넌트를 화면에 표시하는 함수
+    function displayComponents(pveId, components) {
+      const nodeContainers = document.querySelectorAll(`#pve${pveId} .node-component-container`);
+      
+      nodeContainers.forEach(container => {
+        const nodeName = container.getAttribute('data-node');
+        const nodeComponents = components[nodeName] || [];
+        
+        // 기존 내용 지우기
+        container.innerHTML = '';
+        
+        // 컴포넌트 추가
+        nodeComponents.forEach(component => {
+          const componentEl = document.createElement('div');
+          componentEl.className = 'bg-green-100 p-1 rounded text-center mb-1 text-xs';
+          componentEl.textContent = component;
+          container.appendChild(componentEl);
+        });
+      });
+    }
+    
+    // 페이지 로드 시 컴포넌트 정보 가져오기
+    window.addEventListener('DOMContentLoaded', async () => {
+      const pve1Components = await loadComponents(1);
+      const pve2Components = await loadComponents(2);
+      const pve3Components = await loadComponents(3);
+      
+      displayComponents(1, pve1Components);
+      displayComponents(2, pve2Components);
+      displayComponents(3, pve3Components);
+    });
+  </script>
+</head>
+<body>
+  <div class="flex flex-col items-center w-full bg-gray-100 p-4">
+    <!-- OCI -->
+    <div class="mb-2 w-full relative">
+      <div class="bg-gray-300 p-2 rounded-lg text-center w-32 mx-auto font-semibold">OCI</div>
+      
+      <!-- OCI에서 Server Farm으로 연결되는 선 -->
+      <div class="connection-line h-6"></div>
+    </div>
+    
+    <!-- Server Farm -->
+    <div class="mb-4 w-3/4 relative">
+      <div class="bg-yellow-100 py-1 rounded-lg text-center border border-yellow-300">
+        <span class="font-semibold text-sm">Server Farm</span>
+      </div>
+      
+      <!-- Server Farm에서 각 Gate으로 연결되는 선 -->
+      <div class="farm-to-gate-container">
+        <div class="farm-to-gate-1"></div>
+        <div class="farm-to-gate-2"></div>
+        <div class="farm-to-gate-3"></div>
+      </div>
+    </div>
+    
+    <!-- PVE Hosts Container -->
+    <div class="flex flex-row w-full gap-6">
+      <!-- PVE1 Host -->
+      <div id="pve1" class="border-2 border-purple-500 rounded-lg p-3 bg-white flex-1">
+        
+        <!-- Gate -->
+        <div class="flex w-full justify-center mb-1">
+          <div class="w-1/3 font-semibold bg-gray-300 p-1 rounded-lg text-center text-xs">Gate</div>
+        </div>
+        <div class="h-3 w-0.5 bg-gray-500 mx-auto"></div>
+        
+        <div class="flex w-full">
+            <!-- L4 VM -->
+            <div class="flex w-full mb-2 gap-4">
+              <div class="w-3/4 font-semibold bg-blue-100 p-1 rounded-lg text-center text-xs">L4</div>
+            </div>
+        </div>
+        
+        <!-- Node VMs as a horizontal row -->
+        <div class="flex w-full gap-2">
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node1">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node1</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node2">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node2</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node3">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node3</h3>
+          </div>
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Ubuntu">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-red-100 p-1 rounded mt-1 text-xs">Ubuntu</h3>
+          </div>
+          
+        </div>
+        <h2 class="text-center font-bold text-lg bg-purple-100 p-2 rounded mb-2">PVE1 (Dev)</h2>
+      </div>
+      
+      <!-- PVE2 Host -->
+      <div id="pve2" class="border-2 border-purple-500 rounded-lg p-3 bg-white flex-1">
+        
+        <!-- Gate -->
+        <div class="flex w-full justify-center mb-1">
+          <div class="w-1/3 font-semibold bg-gray-300 p-1 rounded-lg text-center text-xs">Gate</div>
+        </div>
+        <div class="h-3 w-0.5 bg-gray-500 mx-auto"></div>
+        
+        <div class="flex w-full">
+            <!-- L4 VM -->
+            <div class="flex w-full mb-2 gap-4">              
+              <div class="w-3/4 font-semibold bg-blue-100 p-1 rounded-lg text-center text-xs">L4</div>                          
+            </div>
+          </div>
+        
+        <!-- Node VMs as a horizontal row -->
+        <div class="flex w-full gap-2">
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node1">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node1</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node2">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node2</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node3">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node3</h3>
+          </div>
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Ubuntu">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-red-100 p-1 rounded mt-1 text-xs">Ubuntu</h3>
+          </div>
+        </div>
+        <h2 class="text-center font-bold text-lg bg-purple-100 p-2 rounded mb-2">PVE2 (DataStore)</h2>
+      </div>
+      
+      <!-- PVE3 Host -->
+      <div id="pve3" class="border-2 border-purple-500 rounded-lg p-3 bg-white flex-1">
+        
+        <!-- Gate -->
+        <div class="flex w-full justify-center mb-1">
+          <div class="w-1/3 font-semibold bg-gray-300 p-1 rounded-lg text-center text-xs">Gate</div>
+        </div>
+        <div class="h-3 w-0.5 bg-gray-500 mx-auto"></div>
+        
+        <div class="flex w-full">
+          <!-- L4 VM -->
+          <div class="flex w-full mb-2 gap-4">
+            <div class="w-3/4 font-semibold bg-blue-100 p-1 rounded-lg text-center text-xs">L4</div>
+          </div>
+        </div>
+        
+        <!-- Node VMs as a horizontal row -->
+        <div class="flex w-full gap-2">
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node1">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node1</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node2">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node2</h3>
+          </div>
+          
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Node3">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-blue-100 p-1 rounded mt-1 text-xs">Node3</h3>
+          </div>
+          <div class="flex-1 border border-blue-400 rounded-lg p-1">
+            <div class="overflow-y-auto h-24 node-component-container" data-node="Ubuntu">
+              <!-- 컴포넌트가 여기에 동적으로 로드됩니다 -->
+            </div>
+            <h3 class="text-center font-semibold bg-red-100 p-1 rounded mt-1 text-xs">Ubuntu</h3>
+          </div>
+        </div>        
+        <h2 class="text-center font-bold text-lg bg-purple-100 p-2 rounded mb-2">PVE3 (AP Server)</h2>
+      </div>      
+    </div>
+    
+        
+  </div>
+</body>
+</html>
